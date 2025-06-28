@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guia de Serviços e Orçamentos para Web (Vue.js)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #F8F7F4;
+            color: #4A4A4A;
+        }
+        .tab-btn {
+            transition: all 0.3s ease;
+        }
+        .tab-btn.active {
+            background-color: #A37E63;
+            color: white;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        .content-section {
+            display: none;
+        }
+        .content-section.active {
+            display: block;
+        }
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        .accordion-button.active + .accordion-content {
+            max-height: 500px;
+            transition: max-height 0.5s ease-in;
+        }
+        .accordion-button .icon {
+            transform: rotate(0deg);
+            transition: transform 0.3s ease;
+        }
+        .accordion-button.active .icon {
+            transform: rotate(180deg);
+        }
+        .chart-container {
+            position: relative;
+            margin: auto;
+            height: 40vh;
+            width: 100%;
+            max-height: 350px;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div id="app" class="container mx-auto px-4 py-8 sm:py-12 lg:px-8">
+        
+        <header class="text-center mb-12">
+            <h1 class="text-4xl sm:text-5xl font-bold text-[#A37E63] mb-2">Guia Interativo de Serviços Web</h1>
+            <p class="text-lg text-gray-600 max-w-3xl mx-auto">Explore os tipos de projetos que desenvolvo e entenda os fatores que influenciam seu orçamento. Selecione um serviço abaixo para começar.</p>
+        </header>
+
+        <main>
+            <!-- Navigation Tabs -->
+            <nav class="flex flex-wrap justify-center gap-2 sm:gap-4 mb-8">
+                <button
+                    v-for="(service, index) in servicesData"
+                    :key="service.id"
+                    @click="updateActiveTab(index)"
+                    :class="['tab-btn px-4 py-2 sm:px-6 sm:py-3 text-sm sm:text-base font-semibold rounded-lg bg-white shadow-sm hover:bg-gray-100', { 'active': activeTab === index }]"
+                >
+                    {{ service.title }}
+                </button>
+            </nav>
+
+            <!-- Content Area -->
+            <div class="bg-white rounded-xl shadow-lg p-6 md:p-8 min-h-[400px]">
+                <div v-for="(service, index) in servicesData" :key="service.id" :class="['content-section animate-fade-in', { 'active': activeTab === index }]">
+                    <h3 class="text-3xl font-bold text-gray-800 mb-3">{{ service.title }}</h3>
+                    <p class="text-gray-600 mb-6">{{ service.description }}</p>
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <h4 class="text-xl font-semibold text-gray-700 mb-3">Características Principais</h4>
+                            <ul class="space-y-2">
+                                <li v-for="item in service.characteristics" :key="item" class="flex items-start">
+                                    <span class="text-green-500 mr-2 mt-1">✓</span><span>{{ item }}</span>
+                                </li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 class="text-xl font-semibold text-gray-700 mb-3">Parâmetros que Elevam o Custo</h4>
+                             <ul class="space-y-2">
+                                <li v-for="item in service.params" :key="item" class="flex items-start">
+                                    <span class="text-amber-500 mr-2 mt-1">▲</span><span>{{ item }}</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comparative Chart Section -->
+            <section class="mt-12 bg-white rounded-xl shadow-lg p-6 md:p-8">
+                <h2 class="text-2xl font-bold text-center text-gray-800 mb-2">Complexidade e Investimento Relativo</h2>
+                <p class="text-center text-gray-500 mb-6 max-w-2xl mx-auto">Este gráfico oferece uma estimativa visual da complexidade e do investimento inicial para cada tipo de projeto. Projetos mais complexos demandam mais tempo e recursos.</p>
+                <div class="chart-container">
+                    <canvas ref="complexityChartCanvas"></canvas>
+                </div>
+            </section>
+
+            <!-- Additional Parameters Section -->
+            <section class="mt-12">
+                <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Fatores que Influenciam o Orçamento</h2>
+                <div class="space-y-4 max-w-4xl mx-auto">
+                    <div v-for="(param, index) in additionalParams" :key="index" class="bg-white rounded-lg shadow-sm overflow-hidden">
+                        <button
+                            @click="toggleAccordion(index)"
+                            :class="['accordion-button w-full text-left p-4 flex justify-between items-center font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none', { 'active': activeAccordion === index }]"
+                        >
+                            <span>{{ param.title }}</span>
+                            <span :class="['icon text-[#A37E63] text-2xl font-light', { 'active': activeAccordion === index }]">▾</span>
+                        </button>
+                        <div :class="['accordion-content', { 'active': activeAccordion === index }]">
+                            <p class="p-4 pt-0 text-gray-600">{{ param.content }}</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="text-center mt-16 py-6 border-t border-gray-200">
+            <p class="text-gray-600">Pronto para começar seu projeto?</p>
+            <a href="mailto:seuemail@exemplo.com" class="mt-2 inline-block bg-[#A37E63] text-white font-bold py-3 px-6 rounded-lg hover:bg-[#8e6b52] transition-colors">Solicite um Orçamento Personalizado</a>
+            <p class="text-sm text-gray-400 mt-4">&copy; 2024 João Victor Bicalho / BS Soluções em TI. Todos os direitos reservados.</p>
+        </footer>
+
+    </div>
+
+    <script type="module">
+        const { createApp, ref, onMounted, watch } = Vue;
+
+        createApp({
+            setup() {
+                const servicesData = [
+                    {
+                        id: 'hotsite',
+                        title: 'HotSite',
+                        description: 'Ideal para campanhas de marketing, lançamentos de produtos ou eventos específicos. É uma página única ou um pequeno conjunto de páginas com um objetivo claro e de curta duração.',
+                        characteristics: [
+                            'Foco em uma única mensagem ou campanha.',
+                            'Design visualmente atrativo e de alto impacto.',
+                            'Geralmente com prazo de validade definido.',
+                            'Call-to-action (CTA) forte e direcionado.'
+                        ],
+                        params: [
+                            'Design com animações complexas ou interatividade avançada.',
+                            'Integração com sistemas externos (ex: CRM, plataformas de eventos).',
+                            'Produção e otimização de conteúdo multimídia (vídeos, áudios).',
+                            'Desenvolvimento em prazo muito curto.'
+                        ],
+                        complexity: [1, 3]
+                    },
+                    {
+                        id: 'landing-page',
+                        title: 'Landing Page',
+                        description: 'Página única focada 100% em conversão. O objetivo é levar o visitante a realizar uma ação específica, como preencher um formulário, baixar um material ou fazer uma compra.',
+                        characteristics: [
+                            'Design limpo, sem distrações (sem menu de navegação principal).',
+                            'Conteúdo persuasivo (copywriting) e direto ao ponto.',
+                            'Formulário de captura de leads em destaque.',
+                            'Uso de provas sociais como depoimentos e cases.'
+                        ],
+                        params: [
+                            'Criação de testes A/B para otimizar a conversão.',
+                            'Integração com ferramentas de automação de marketing (ex: Mailchimp, RD Station).',
+                            'Desenvolvimento de copywriting e estratégia de persuasão.',
+                            'Análise de métricas e performance (Analytics, Heatmaps).'
+                        ],
+                        complexity: [2, 4]
+                    },
+                    {
+                        id: 'site-institucional',
+                        title: 'Site Institucional',
+                        description: 'A presença digital oficial da sua empresa. Serve como um cartão de visitas completo, apresentando sua história, serviços, produtos, time e formas de contato.',
+                        characteristics: [
+                            'Estrutura com múltiplas páginas (Home, Sobre, Serviços, Contato, etc.).',
+                            'Design alinhado com a identidade visual da marca.',
+                            'Conteúdo informativo e profissional.',
+                            'Otimizado para mecanismos de busca (SEO).'
+                        ],
+                        params: [
+                            'Número de páginas e seções personalizadas.',
+                            'Implementação de um Sistema de Gerenciamento de Conteúdo (CMS) como WordPress.',
+                            'Criação de blog com sistema de categorias e tags.',
+                            'Desenvolvimento de áreas restritas com login e senha.',
+                            'Integração com redes sociais, mapas e outras ferramentas.'
+                        ],
+                        complexity: [3, 6]
+                    },
+                    {
+                        id: 'ecommerce',
+                        title: 'E-commerce',
+                        description: 'Uma loja virtual completa para a venda de produtos ou serviços online, com todo o processo de compra, desde a escolha do item até o pagamento e cálculo de frete.',
+                        characteristics: [
+                            'Catálogo de produtos com fotos, descrições e preços.',
+                            'Carrinho de compras e processo de checkout seguro.',
+                            'Integração com múltiplos meios de pagamento.',
+                            'Painel administrativo para gestão de produtos, pedidos e clientes.'
+                        ],
+                        params: [
+                            'Número de produtos e complexidade do catálogo (variações de cor, tamanho, etc.).',
+                            'Integração com sistemas de gestão (ERP) e controle de estoque.',
+                            'Configuração de múltiplos gateways de pagamento e opções de parcelamento.',
+                            'Cálculo de frete complexo (Correios, transportadoras).',
+                            'Funcionalidades avançadas: cupons de desconto, reviews, lista de desejos.'
+                        ],
+                        complexity: [6, 10]
+                    },
+                    {
+                        id: 'sistema-personalizado',
+                        title: 'Sistema Personalizado',
+                        description: 'Uma aplicação web desenvolvida do zero para atender a uma necessidade específica do seu negócio, que não pode ser resolvida com soluções prontas. Exemplos: sistemas de gestão, plataformas de agendamento, CRMs customizados.',
+                        characteristics: [
+                            'Funcionalidades totalmente sob medida para o seu processo.',
+                            'Interface e experiência do usuário (UI/UX) projetadas para suas operações.',
+                            'Controle total sobre os dados e a lógica de negócio.',
+                            'Alta escalabilidade e segurança.'
+                        ],
+                        params: [
+                            'Complexidade das regras de negócio e fluxos de trabalho.',
+                            'Quantidade de telas, módulos e funcionalidades.',
+                            'Integração com outras APIs e sistemas externos.',
+                            'Necessidade de relatórios e dashboards analíticos.',
+                            'Nível de segurança e conformidade (ex: LGPD).',
+                            'Volume de dados e requisitos de performance.'
+                        ],
+                        complexity: [8, 10]
+                    }
+                ];
+
+                const additionalParams = [
+                    { title: 'Reuniões e Alinhamentos', content: 'Tempo dedicado a reuniões de briefing, planejamento, acompanhamento e aprovações, garantindo que o projeto atenda perfeitamente às suas expectativas.' },
+                    { title: 'Pesquisa e Estratégia (UX)', content: 'Análise do seu mercado, concorrentes e público-alvo para definir a melhor arquitetura de informação e estratégia de experiência do usuário.' },
+                    { title: 'Design de Interface (UI)', content: 'Criação de um layout visual único e profissional (wireframes e protótipos de alta fidelidade) que reflete a identidade da sua marca e otimiza a usabilidade.' },
+                    { title: 'Criação ou Edição de Conteúdo', content: 'Desenvolvimento de textos (copywriting), tratamento de imagens ou edição de vídeos. A qualidade do conteúdo é fundamental para o sucesso do projeto.' },
+                    { title: 'SEO On-Page', content: 'Implementação de boas práticas de otimização para motores de busca (Google, Bing), como uso correto de tags, URLs amigáveis e otimização de imagens, para melhorar seu ranking.' },
+                    { title: 'Testes e Controle de Qualidade', content: 'Processo rigoroso de testes em diferentes navegadores e dispositivos para garantir que tudo funcione perfeitamente antes do lançamento.' },
+                    { title: 'Treinamento e Documentação', content: 'Sessões de treinamento para você ou sua equipe utilizarem o site/sistema com autonomia, acompanhadas de material de apoio.' }
+                ];
+
+                const activeTab = ref(0);
+                const activeAccordion = ref(null);
+                const complexityChartCanvas = ref(null);
+                let complexityChartInstance = null;
+
+                const defaultColors = servicesData.map(() => 'rgba(163, 126, 99, 0.6)');
+                const highlightColor = 'rgba(163, 126, 99, 1)';
+
+                const updateActiveTab = (index) => {
+                    activeTab.value = index;
+                };
+
+                const toggleAccordion = (index) => {
+                    activeAccordion.value = activeAccordion.value === index ? null : index;
+                };
+
+                onMounted(() => {
+                    // Initialize Chart.js
+                    const ctx = complexityChartCanvas.value.getContext('2d');
+                    complexityChartInstance = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: servicesData.map(s => s.title),
+                            datasets: [{
+                                label: 'Complexidade Relativa',
+                                data: servicesData.map(s => s.complexity[1]),
+                                backgroundColor: defaultColors,
+                                borderColor: servicesData.map(() => 'rgba(163, 126, 99, 1)'),
+                                borderWidth: 1,
+                                borderRadius: 4,
+                                borderSkipped: false,
+                            }]
+                        },
+                        options: {
+                            indexAxis: 'y',
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                x: {
+                                    beginAtZero: true,
+                                    max: 10,
+                                    title: {
+                                        display: true,
+                                        text: 'Nível de Complexidade (1-10)'
+                                    },
+                                    grid: {
+                                        color: '#E5E7EB'
+                                    }
+                                },
+                                y: {
+                                    grid: {
+                                        display: false
+                                    }
+                                }
+                            },
+                            plugins: {
+                                legend: {
+                                    display: false
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            const service = servicesData[context.dataIndex];
+                                            return ` Nível: ${service.complexity[0]} a ${service.complexity[1]}`;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                    // Set initial highlight for the chart
+                    const newColors = [...defaultColors];
+                    newColors[activeTab.value] = highlightColor;
+                    complexityChartInstance.data.datasets[0].backgroundColor = newColors;
+                    complexityChartInstance.update();
+                });
+
+                // Watch for changes in activeTab to update chart
+                watch(activeTab, (newIndex) => {
+                    if (complexityChartInstance) {
+                        const newColors = [...defaultColors];
+                        newColors[newIndex] = highlightColor;
+                        complexityChartInstance.data.datasets[0].backgroundColor = newColors;
+                        complexityChartInstance.update();
+                    }
+                });
+
+                return {
+                    servicesData,
+                    additionalParams,
+                    activeTab,
+                    activeAccordion,
+                    complexityChartCanvas,
+                    updateActiveTab,
+                    toggleAccordion
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
